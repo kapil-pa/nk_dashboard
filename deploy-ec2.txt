@@ -17,7 +17,7 @@ sudo chown $USER:$USER /opt/hydroponics
 cd /opt/hydroponics
 
 # Clone repository from GitHub
-git clone https://github.com/YOUR_USERNAME/hydroponics-dashboard.git .
+git clone https://github.com/kapil-pa/nk_dashboard.git .
 # Note: Replace YOUR_USERNAME with your actual GitHub username
 
 # Backend Setup
