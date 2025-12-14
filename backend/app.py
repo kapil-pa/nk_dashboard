@@ -190,7 +190,7 @@ def init_db():
 
 # API Routes
 
-@app.route('/units/<unit_id>/sensors', methods=['GET'])
+@app.route('/units/<unit_id>/sensors-data', methods=['GET'])
 def get_unit_sensors(unit_id):
     """Get latest sensor data for a hydro unit"""
     db = get_db()
@@ -595,6 +595,60 @@ def upload_camera_image(camera_id):
         })
 
     return jsonify({'error': 'Invalid file type'}), 400
+
+
+@app.route('/api/units/<unit_id>/sensors', methods=['POST'])
+def post_unit_sensors(unit_id):
+    """
+    Receive sensor data from ESP32 for a specific hydro unit
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON"}), 400
+
+        reservoir = data.get('reservoir', {})
+        climate = data.get('climate', {})
+
+        timestamp = int(time.time())
+        db = get_db()
+
+        db.execute('''
+            INSERT INTO sensor_readings
+            (unit_id, timestamp, ph, tds, turbidity, water_temp, water_level, climate_data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            unit_id,
+            timestamp,
+            reservoir.get('ph'),
+            reservoir.get('tds'),
+            reservoir.get('turbidity'),
+            reservoir.get('water_temp'),
+            reservoir.get('water_level'),
+            json.dumps(climate)
+        ))
+
+        db.commit()
+
+        # WebSocket broadcast
+        socketio.emit('sensor_update', {
+            'unit_id': unit_id,
+            'timestamp': timestamp,
+            'source': 'esp32'
+        })
+
+        return jsonify({
+            "status": "success",
+            "unit_id": unit_id,
+            "timestamp": timestamp
+        }), 200
+
+    except Exception as e:
+        print("ESP32 SENSOR POST ERROR:", e)
+        return jsonify({"error": "Server error"}), 500
+
+
+
 
 @app.route('/units/<unit_id>/cameras/latest', methods=['GET'])
 def get_unit_latest_images(unit_id):
